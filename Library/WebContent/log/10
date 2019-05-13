@@ -1,0 +1,18 @@
+ var userName = $("input[name=userName]").val();
+              	var passWord = $("input[name=passWord]").val();
+              	var name = $("input[name=name]").val();
+              	var grade = $("input[name=grade]").val();
+              	var department = $("input[name=department]").val();
+              	var profession = $("input[name=profession]").val();
+              	 var data= {action:"adduser",name:name,userName:userName,passWord:passWord,name:name,grade:grade,profession:profession,department:department};
+          	       	  $.ajax({
+          	                 type:"POST",
+          	                 url:"${ctx}/",
+          	                 data:data,
+          	                 dataType : "json",
+          	                 success:function(mgs==1){
+          	                	 alert('Submitted successfully');
+          	                	location.href='${ctx}/log/logstudent.jsp';
+          	                	
+          	                 }
+          	       	  }) 

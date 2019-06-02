@@ -1,0 +1,328 @@
+package com.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.Util.JDBCUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+import com.entity.MSeat;
+import com.entity.Seat;
+import com.service.SeatManagerService;
+
+@WebServlet("/SeatManagerController")
+public class SeatManagerController extends HttpServlet {
+	SeatManagerService ss = new SeatManagerService();
+
+	public SeatManagerController() {
+		super();
+
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		response.setContentType("text/html;charset=UTF-8");
+		PrintWriter out = response.getWriter();
+		String action = request.getParameter("action");
+
+		if (action.equals("first")) {
+			List<MSeat> list = ss.queryAll();
+			Map<String, List<MSeat>> map = new HashMap<>();
+			map.put("Rows", list);
+			String jsonOutput = JSON.toJSONString(map);
+
+			out.print(jsonOutput);
+
+		} else if (action.equals("edit")) {
+
+			String sbin = request.getParameter("s");
+			System.out.println(sbin);
+			JSONObject jsonObject = JSONObject.parseObject(sbin);
+			String SeatNumber = jsonObject.getString("Seat");
+			String WhoName = jsonObject.getString("Operator");
+			String Floor =jsonObject.getString("Floor");
+			String data =jsonObject.getString("data");
+			ss.edit(SeatNumber, WhoName,data,Floor);
+			String jsonOutput = JSON.toJSONString("1");
+
+			out.print(jsonOutput);
+		} else if (action.equals("errseat")) {
+			List<Seat> list = ss.queryAllerr();
+			Map<String, List<Seat>> map = new HashMap<>();
+			map.put("Rows", list);
+
+			String jsonOutput = JSON.toJSONString(map);
+
+			out.print(jsonOutput);
+
+		}else if(action.equals("remove")){
+			String Seat = request.getParameter("id");
+			remove1(Seat);
+			remove2(Seat);
+			String jsonOutput = JSON.toJSONString("1");
+			out.print(jsonOutput);
+		}
+
+	}
+
+	private void remove2(String seat) {
+		JDBCUtil.sql = "delete from seaterr where seatNumber=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1, seat);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+	}
+
+	private void remove1(String seat) {
+		JDBCUtil.sql = "UPDATE information set have=0,whoid=null,whoname=null where seatNumber=?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1, seat);
+
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		
+	}
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		doGet(request, response);
+	}
+
+}
+
+
+package com.dao;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.entity.MSeat;
+import com.entity.Seat;
+
+public class SeatManagerDao {
+	public List<MSeat> queryAll() {
+		List<MSeat> list = new ArrayList<>();
+		JDBCUtil.sql = "select * from information";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			while (JDBCUtil.rs.next()) {
+				MSeat s = new MSeat();
+				s.setFloor(JDBCUtil.rs.getString(2));
+				s.setSeatNumber(JDBCUtil.rs.getString(3));
+				s.setDate(JDBCUtil.rs.getDate(4));
+				s.setWhoName(JDBCUtil.rs.getString(7));
+				list.add(s);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return list;
+		
+	}
+
+	public void edit(String seatnumbner, String oper,String id,String data,String Floor) {
+		// TODO Auto-generated method stub
+		System.out.println("----------");
+		System.out.println(seatnumbner);
+		System.out.println(oper);
+		System.out.println(id);
+		JDBCUtil.sql = "UPDATE information set have=1,floor=?,time=?,whoid=?,whoname=? where seatNumber=?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1,Floor);
+			JDBCUtil.ps.setString(2, data);
+			JDBCUtil.ps.setString(3,id);
+			JDBCUtil.ps.setString(4, oper);
+			JDBCUtil.ps.setString(5, seatnumbner);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+
+	public List<Seat> queryAllerr() {
+		List<Seat> list = new ArrayList<>();
+		JDBCUtil.sql = "select * from seaterr";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			while(JDBCUtil.rs.next()) {
+				Seat s = new Seat();
+				s.setFloor(JDBCUtil.rs.getString(2));
+				s.setSeatNumber(JDBCUtil.rs.getString(3));
+				s.setDate(JDBCUtil.rs.getDate(4));
+				s.setWhoName(JDBCUtil.rs.getString(6));
+				list.add(s);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return list;
+		
+	}
+}
+package com.service;
+
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.dao.SeatManagerDao;
+import com.entity.MSeat;
+import com.entity.Seat;
+
+public class SeatManagerService {
+SeatManagerDao sm = new SeatManagerDao();
+public List<MSeat> queryAll() {
+	 List<MSeat> list = sm.queryAll();
+	return list;
+}
+public void edit(String seatnumbner, String oper,String data,String Floor) {
+	if(oper==""||oper==null){
+		System.out.println("oper是空的");
+		JDBCUtil.sql = "UPDATE information set have=0,whoid=null,whoname=null where seatNumber =?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1,seatnumbner);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}else{
+		System.out.println("oper不是空的");
+		String id="";
+		JDBCUtil.sql = "select * from message where name =? ";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1,oper);
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			if(JDBCUtil.rs.next()) {
+			id = JDBCUtil.rs.getString(1);
+				System.out.println(id);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		sm.edit(seatnumbner,oper,id,data,Floor);
+	}
+	
+}
+public List<Seat> queryAllerr() {
+	List<Seat> list =sm.queryAllerr();
+
+	return list;
+	
+}
+
+}
+package com.Util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class JDBCUtil {
+	// 整理一下重复的代码
+	// 包装前4步
+	// 1加载驱动
+	// 2建立连接
+	// 3准备sql
+	// 4得到执行对象
+	public static String sql = "";
+	public static String url = "jdbc:mysql://localhost:3306/day0510?characterEncoding=utf-8&useSSL=false";
+	public static String user = "root";
+	public static String pwd = "root";
+	public static Connection con = null;
+	public static PreparedStatement ps = null;
+	public static ResultSet rs = null;
+
+	static {// 静态代码块
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// 静态方法更方便调用些
+	public static PreparedStatement getPs() {
+		try {
+			con = DriverManager.getConnection(url, user, pwd);
+			ps = con.prepareStatement(sql);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return ps;
+	}
+
+	// 关闭资源
+	public static void close() {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (con != null) {
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}

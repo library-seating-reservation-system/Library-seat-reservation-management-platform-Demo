@@ -1,0 +1,316 @@
+package com.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.alibaba.fastjson.JSON;
+import com.entity.User;
+import com.service.UserService;
+
+@WebServlet("/LoginController")
+public class LoginController extends HttpServlet {
+UserService us = new UserService();
+	public LoginController() {
+		super();
+
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		response.setContentType("text/html;charset=UTF-8");
+		PrintWriter out = response.getWriter();
+		String action = request.getParameter("action");
+		if(action.equals("login")){
+			String userName = request.getParameter("userName");
+			String passWord = request.getParameter("passWord");
+			String level = request.getParameter("level");
+			if(us.userLogin(userName, passWord,level ,request)){
+				User u= (User) request.getAttribute("uq");
+					out.print(true);
+					
+				
+			}else{
+				out.print(false);
+			}
+		}else if(action.equals("adduser")){
+			String userName = request.getParameter("userName");
+			String passWord = request.getParameter("passWord");
+			String name = request.getParameter("name");
+			String grade = request.getParameter("grade");
+			String department = request.getParameter("department");
+			String profession = request.getParameter("profession");
+			us.adduser(userName,passWord,name,department,grade,profession);
+			  String jsonOutput= JSON.toJSONString("1"); 
+	    		out.print(jsonOutput);
+		}
+		  
+	}
+
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		doGet(request, response);
+	}
+
+}
+
+
+
+package com.dao;
+
+import com.Util.JDBCUtil;
+import com.Util.NewTime;
+import com.entity.User;
+
+
+public class UserDao {
+    //查询用户
+	public User getUser(String userName,String passWord,String level) {
+        User u = new User();
+     		JDBCUtil.sql = "select * from user where username=? and password=? and level=?";
+     		JDBCUtil.ps = JDBCUtil.getPs();
+     		try {
+     			JDBCUtil.ps.setString(1, userName);
+     			JDBCUtil.ps.setString(2, passWord);
+     			JDBCUtil.ps.setString(3, level);
+     			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+     			if (JDBCUtil.rs.next()) {
+     				u.setId(JDBCUtil.rs.getInt(1));
+     				u.setUserName(JDBCUtil.rs.getString(2));
+     				u.setPassWord(JDBCUtil.rs.getString(3));
+     				u.setLevel(JDBCUtil.rs.getString(4));
+     			}
+     			JDBCUtil.close();
+     		} catch (Exception e) {
+     			// TODO Auto-generated catch block
+     			e.printStackTrace();
+     		}
+        return u;
+	}
+
+	public void adduser(int a,String userName, String name, String grade, String profession, String department) {
+		JDBCUtil.sql = "insert into message values(?,?,?,?,?,?)";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setInt(1, a);
+			JDBCUtil.ps.setString(2, name);
+			JDBCUtil.ps.setString(3, department);
+			JDBCUtil.ps.setString(4, grade);
+			JDBCUtil.ps.setString(5, profession);
+			JDBCUtil.ps.setString(6, new NewTime().LoginTime());
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		
+	}
+}
+
+
+
+package com.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
+
+import com.Util.JDBCUtil;
+import com.dao.UserDao;
+import com.entity.User;
+import com.entity.UserAll;
+
+public class UserService {
+	UserDao u = new UserDao();
+
+	// 查询登陆信息是否正确
+	public boolean userLogin(String userName, String passWord,String level ,HttpServletRequest request) {
+
+		User user = u.getUser(userName, passWord,level);
+		if (user.getUserName() != null) {
+
+			request.getSession().setAttribute("uq", user);
+
+			return true;
+		}
+		return false;
+	}
+
+	public void adduser(String userName, String passWord,String department,String name, String grade, String profession) {
+		JDBCUtil.sql = "insert into user values(null,?,?,2)";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1, userName);
+			JDBCUtil.ps.setString(2, passWord);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		int id = iduser(userName);
+		u.adduser(id,userName,name,grade,profession,department);
+
+		
+	}
+
+	private int iduser(String userName) {
+		JDBCUtil.sql = "SELECT id from  user where userName=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		
+		int da = 0;
+		try {
+			JDBCUtil.ps.setString(1, userName);
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			if(JDBCUtil.rs.next()) {
+				da = JDBCUtil.rs.getInt(1);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return da;
+		
+	}
+
+}
+
+
+package com.entity;
+
+public class User {
+
+	
+	private Integer id;
+	private String userName;
+	private String passWord;
+	private String level;
+	public User() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	public User(Integer id, String userName, String passWord, String level) {
+		super();
+		this.id = id;
+		this.userName = userName;
+		this.passWord = passWord;
+		this.level = level;
+	}
+	public Integer getId() {
+		return id;
+	}
+	public void setId(Integer id) {
+		this.id = id;
+	}
+	public String getUserName() {
+		return userName;
+	}
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+	public String getPassWord() {
+		return passWord;
+	}
+	public void setPassWord(String passWord) {
+		this.passWord = passWord;
+	}
+	public String getLevel() {
+		return level;
+	}
+	public void setLevel(String level) {
+		this.level = level;
+	}
+	
+	
+	
+	
+}
+package com.Util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class JDBCUtil {
+	// 整理一下重复的代码
+	// 包装前4步
+	// 1加载驱动
+	// 2建立连接
+	// 3准备sql
+	// 4得到执行对象
+	public static String sql = "";
+	public static String url = "jdbc:mysql://localhost:3306/day0510?characterEncoding=utf-8&useSSL=false";
+	public static String user = "root";
+	public static String pwd = "root";
+	public static Connection con = null;
+	public static PreparedStatement ps = null;
+	public static ResultSet rs = null;
+
+	static {// 静态代码块
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// 静态方法更方便调用些
+	public static PreparedStatement getPs() {
+		try {
+			con = DriverManager.getConnection(url, user, pwd);
+			ps = con.prepareStatement(sql);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return ps;
+	}
+
+	// 关闭资源
+	public static void close() {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (con != null) {
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
+

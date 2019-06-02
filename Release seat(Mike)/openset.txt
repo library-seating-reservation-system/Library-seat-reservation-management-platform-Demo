@@ -1,0 +1,344 @@
+package com.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.Util.NewTime;
+import com.dao.SpareSeatDao;
+import com.entity.Seat;
+
+public class SpareSeatService {
+SpareSeatDao ss = new SpareSeatDao();
+	public List<Seat> queryAll() {
+		
+		 JDBCUtil.sql = "UPDATE information set time=? where have=0;";
+			JDBCUtil.ps = JDBCUtil.getPs();
+			try {
+				JDBCUtil.ps.setString(1,new NewTime().LoginTime());
+				JDBCUtil.ps.executeUpdate();
+				JDBCUtil.close();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		List<Seat> list = ss.queryAll();
+		return list;
+	}
+	public void add(Integer id, String id2) {
+		// TODO Auto-generated method stub
+		String name = "";
+		JDBCUtil.sql = "select name from message where id=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setInt(1, id);
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			if(JDBCUtil.rs.next()) {
+				name=JDBCUtil.rs.getString(1);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	
+	    ss.add(id,id2,name);
+	  
+	}
+	public void adderr(Integer id, String name, String seatnumber, String date) {
+		// TODO Auto-generated method stub
+		// TODO Auto-generated method stub
+		System.out.println(id);
+				String uname = "";
+				JDBCUtil.sql = "select name from message where id=?";
+				JDBCUtil.ps = JDBCUtil.getPs();
+				try {
+					JDBCUtil.ps.setInt(1, id);
+					JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+					if(JDBCUtil.rs.next()) {
+						uname=JDBCUtil.rs.getString(1);
+					}
+					JDBCUtil.close();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				System.out.println(uname);
+				ss.adderr(id,uname,name,seatnumber,date);
+	}
+
+}
+
+
+
+
+package com.dao;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.entity.Seat;
+
+public class SpareSeatDao {
+
+	public List<Seat> queryAll() {
+		List<Seat> list = new ArrayList<>();
+		JDBCUtil.sql = "select * from information where have=0";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			while (JDBCUtil.rs.next()) {
+				Seat s = new Seat();
+				s.setFloor(JDBCUtil.rs.getString(2));
+				s.setSeatNumber(JDBCUtil.rs.getString(3));
+				s.setDate(JDBCUtil.rs.getDate(4));
+				s.setWhoName(JDBCUtil.rs.getString(7));
+				list.add(s);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return list;
+		
+	}
+
+	public void add(Integer id, String id2, String name) {
+		// TODO Auto-generated method stub
+		
+		JDBCUtil.sql = "UPDATE information set have=1,whoid=?,whoname=? where seatNumber=?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			
+			JDBCUtil.ps.setString(1,id+"");
+			
+			JDBCUtil.ps.setString(2, name);
+			JDBCUtil.ps.setString(3, id2);
+		
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	public void adderr(Integer id, String uname, String name, String seatnumber, String date) {
+				JDBCUtil.sql = "insert into seaterr values(null,?,?,?,?,?)";
+				JDBCUtil.ps = JDBCUtil.getPs();
+				try {
+					JDBCUtil.ps.setString(1, name);
+					JDBCUtil.ps.setString(2, seatnumber);
+					JDBCUtil.ps.setString(3, date);
+					JDBCUtil.ps.setString(4,id+"");
+					JDBCUtil.ps.setString(5, uname);
+					JDBCUtil.ps.executeUpdate();
+					JDBCUtil.close();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				SeatErr(seatnumber);
+		
+	}
+
+	private void SeatErr(String seatnumber) {
+		JDBCUtil.sql = "UPDATE information set have=3 where seatNumber=?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			
+			JDBCUtil.ps.setString(1,seatnumber);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
+}
+
+package com.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.Util.JDBCUtil;
+import com.alibaba.fastjson.JSON;
+import com.entity.Seat;
+import com.entity.User;
+import com.service.SpareSeatService;
+
+@WebServlet("/SpareSeatController")
+public class SpareSeatController extends HttpServlet {
+      SpareSeatService ss = new SpareSeatService();
+	public SpareSeatController() {
+		super();
+
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		    response.setContentType("text/html;charset=UTF-8");
+		    PrintWriter out = response.getWriter();
+              String action = request.getParameter("action");
+		    
+		    
+              if(action.equals("first")){ 
+		    	   List<Seat> list= ss.queryAll();
+		    	   Map<String,List<Seat>> map = new HashMap<>();
+		    	   map.put("Rows",list);
+		    	   String jsonOutput= JSON.toJSONString(map); 
+		    	   
+		    		out.print(jsonOutput);
+		    	   
+		       }else if(action.equals("Reserve")){
+		    	User u =(User) request.getSession().getAttribute("uq");
+		    	 String id= request.getParameter("id");  
+		    	
+		    		
+		    		 if(flag(u.getId())){
+		    			 ss.add(u.getId(),id);
+				    	 String jsonOutput= JSON.toJSONString("1"); 
+				    	   
+				    		out.print(jsonOutput);
+			    	  }else{
+			    		  String jsonOutput= JSON.toJSONString("2"); 
+				    	   
+				    		out.print(jsonOutput);
+			    	  }
+		    		
+		    		
+		       }else if(action.equals("adderr")){
+		    	   String name = request.getParameter("name");
+		    	   String Seatnumber = request.getParameter("Seatnumber");
+		    	   String date = request.getParameter("date");
+		    	   User u =(User) request.getSession().getAttribute("uq");
+		    	   ss.adderr(u.getId(),name,Seatnumber,date);
+		    	   String jsonOutput= JSON.toJSONString("1"); 
+		    		out.print(jsonOutput);
+		       }
+		
+		
+	}
+	private boolean flag(Integer id) {
+		JDBCUtil.sql = "select count(*) from information where whoid=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		int a = 0;
+		try {
+			JDBCUtil.ps.setString(1, id+"");
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			if (JDBCUtil.rs.next()) {
+				a=JDBCUtil.rs.getInt(1);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		if(a==0){
+			return true;
+		}else{
+			return false;
+			}
+		
+	}
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		doGet(request, response);
+	}
+
+}
+
+package com.Util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class JDBCUtil {
+	// 整理一下重复的代码
+	// 包装前4步
+	// 1加载驱动
+	// 2建立连接
+	// 3准备sql
+	// 4得到执行对象
+	public static String sql = "";
+	public static String url = "jdbc:mysql://localhost:3306/day0510?characterEncoding=utf-8&useSSL=false";
+	public static String user = "root";
+	public static String pwd = "root";
+	public static Connection con = null;
+	public static PreparedStatement ps = null;
+	public static ResultSet rs = null;
+
+	static {// 静态代码块
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// 静态方法更方便调用些
+	public static PreparedStatement getPs() {
+		try {
+			con = DriverManager.getConnection(url, user, pwd);
+			ps = con.prepareStatement(sql);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return ps;
+	}
+
+	// 关闭资源
+	public static void close() {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (con != null) {
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}

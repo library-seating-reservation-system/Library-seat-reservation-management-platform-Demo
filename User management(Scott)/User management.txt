@@ -1,0 +1,239 @@
+package com.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.Util.JDBCUtil;
+import com.alibaba.fastjson.JSON;
+import com.entity.MSeat;
+import com.entity.UserAll;
+import com.service.UserReviewService;
+
+@WebServlet("/UserReviewController")
+public class UserReviewController extends HttpServlet {
+UserReviewService us = new UserReviewService();
+	public UserReviewController() {
+		super();
+
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		  response.setContentType("text/html;charset=UTF-8");
+		    PrintWriter out = response.getWriter();
+          String action = request.getParameter("action");
+//          System.out.println(action);
+		    
+		    
+          if(action.equals("first")){ 
+		    	   List<UserAll> list= us.queryAll();
+		    	   Map<String,List<UserAll>> map = new HashMap<>();
+		    	   map.put("Rows",list);
+		    	   String jsonOutput= JSON.toJSONString(map); 
+		    	   
+		    		out.print(jsonOutput);
+		    	   
+		       }else if(action.equals("remove")){
+		    	 String id = request.getParameter("id");
+		    	 String uid="";
+		 		JDBCUtil.sql = "SELECT id from  user where userName=?";
+		 		JDBCUtil.ps = JDBCUtil.getPs();
+		 		try {
+		 			JDBCUtil.ps.setString(1, id);
+		 			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+		 			if (JDBCUtil.rs.next()) {
+		 				uid=JDBCUtil.rs.getString(1);
+						
+					}
+		 			JDBCUtil.close();
+		 		} catch (Exception e) {
+		 			// TODO Auto-generated catch block
+		 			e.printStackTrace();
+		 		}
+		 	        us.remove(uid);	
+		 	       String jsonOutput= JSON.toJSONString("1"); 
+		    	   
+		    		out.print(jsonOutput);
+             }
+	}
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		doGet(request, response);
+	}
+
+}
+
+package com.dao;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.entity.UserAll;
+
+public class UserReviewDao {
+
+	public List<UserAll> queryAll() {
+		List<UserAll> list = new ArrayList<>();
+		JDBCUtil.sql = "SELECT * from  user RIGHT JOIN message ON user.id=message.id";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			while (JDBCUtil.rs.next()) {
+				UserAll u = new UserAll();
+				u.setUserName(JDBCUtil.rs.getString(2));
+				u.setPassWord(JDBCUtil.rs.getString(3));
+				u.setName(JDBCUtil.rs.getString(6));
+				u.setDepartment(JDBCUtil.rs.getString(7));
+				u.setGrade(JDBCUtil.rs.getString(8));
+				u.setProfession(JDBCUtil.rs.getString(9));
+				u.setTime(JDBCUtil.rs.getDate(10));
+				list.add(u);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return list;
+	}
+
+	public void remove(String id) {
+		// TODO Auto-generated method stub
+				JDBCUtil.sql = "delete from message where id=?";
+				JDBCUtil.ps = JDBCUtil.getPs();
+				try {
+					JDBCUtil.ps.setString(1, id);
+					JDBCUtil.ps.executeUpdate();
+					JDBCUtil.close();
+
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+	}
+
+}
+package com.service;
+
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.dao.UserReviewDao;
+import com.entity.Seat;
+import com.entity.UserAll;
+
+public class UserReviewService {
+UserReviewDao ud = new UserReviewDao();
+	public List<UserAll> queryAll() {
+		 List<UserAll> list = ud.queryAll();
+			return list;
+	}
+	public void remove(String id) {
+		// TODO Auto-generated method stub
+		JDBCUtil.sql = "delete from user where id=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1, id);
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		JDBCUtil.close();
+		
+		ud.remove(id);
+		
+	}
+
+}
+package com.Util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class JDBCUtil {
+	// 整理一下重复的代码
+	// 包装前4步
+	// 1加载驱动
+	// 2建立连接
+	// 3准备sql
+	// 4得到执行对象
+	public static String sql = "";
+	public static String url = "jdbc:mysql://localhost:3306/day0510?characterEncoding=utf-8&useSSL=false";
+	public static String user = "root";
+	public static String pwd = "root";
+	public static Connection con = null;
+	public static PreparedStatement ps = null;
+	public static ResultSet rs = null;
+
+	static {// 静态代码块
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// 静态方法更方便调用些
+	public static PreparedStatement getPs() {
+		try {
+			con = DriverManager.getConnection(url, user, pwd);
+			ps = con.prepareStatement(sql);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return ps;
+	}
+
+	// 关闭资源
+	public static void close() {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (con != null) {
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}

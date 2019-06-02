@@ -1,0 +1,280 @@
+package com.controller;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.Util.JDBCUtil;
+import com.alibaba.fastjson.JSON;
+import com.entity.MSeat;
+import com.entity.Seat;
+import com.entity.User;
+import com.service.MySeatService;
+
+@WebServlet("/MySeatController")
+public class MySeatController extends HttpServlet {
+
+	MySeatService ms = new MySeatService();
+
+	public MySeatController() {
+		super();
+
+	}
+
+	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+		response.setContentType("text/html;charset=UTF-8");
+		PrintWriter out = response.getWriter();
+		String action = request.getParameter("action");
+		User u = (User) request.getSession().getAttribute("uq");
+		if (action.equals("first")) {
+			List<Seat> list = ms.queryAll(u.getId());
+			Map<String, List<Seat>> map = new HashMap<>();
+			map.put("Rows", list);
+			String jsonOutput = JSON.toJSONString(map);
+
+			out.print(jsonOutput);
+
+		} else if (action.equals("Reserve")) {
+			String seatNumber = request.getParameter("id");
+
+			// if(flag(u.getId())){
+			ms.delete(seatNumber);
+			String jsonOutput = JSON.toJSONString("1");
+			out.print(jsonOutput);
+			// }else{
+			// String jsonOutput= JSON.toJSONString("2");
+			// out.print(jsonOutput);
+			// }
+			//
+		}
+
+	}
+
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response)
+			throws ServletException, IOException {
+
+		doGet(request, response);
+	}
+
+}
+
+package com.dao;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.Util.JDBCUtil;
+import com.entity.Seat;
+
+public class MySeatDao {
+
+	public List<Seat> queryAll(Integer id) {
+		List<Seat> list = new ArrayList<>();
+		JDBCUtil.sql = "select * from information where whoid=?";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setInt(1, id);
+			JDBCUtil.rs = JDBCUtil.ps.executeQuery();
+			while(JDBCUtil.rs.next()) {
+				Seat s = new Seat();
+				s.setFloor(JDBCUtil.rs.getString(2));
+				s.setSeatNumber(JDBCUtil.rs.getString(3));
+				System.out.println(s.getSeatNumber());
+				s.setDate(JDBCUtil.rs.getDate(4));
+				s.setWhoName(JDBCUtil.rs.getString(7));
+				list.add(s);
+			}
+			JDBCUtil.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return list;
+
+	}
+
+	// 移除个人占位
+	public void delete(String seatNumber) {
+		JDBCUtil.sql = "UPDATE information set have=0,whoid=null,whoname=null where seatNumber=?;";
+		JDBCUtil.ps = JDBCUtil.getPs();
+		try {
+			JDBCUtil.ps.setString(1, seatNumber);
+
+			JDBCUtil.ps.executeUpdate();
+			JDBCUtil.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+}
+
+
+
+package com.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.dao.MySeatDao;
+import com.entity.Seat;
+
+public class MySeatService {
+MySeatDao ms = new MySeatDao();
+	public List<Seat> queryAll(Integer id) {
+		List<Seat> list =ms.queryAll(id);
+
+		return list;
+	}
+	public void delete(String seatNumber) {
+		ms.delete(seatNumber);
+		
+	}
+
+}
+
+
+package com.entity;
+
+import java.util.Date;
+
+import com.alibaba.fastjson.annotation.JSONField;
+
+public class MSeat {
+	@JSONField(name = "Floor")
+	private String floor;
+	@JSONField(name = "Seat")
+	private String seatNumber;
+	@JSONField(name = "data")
+	private Date date;
+	@JSONField(name = "Operator")
+	private String whoName;
+	public MSeat(String floor, String seatNumber, Date date, String whoName) {
+		super();
+		this.floor = floor;
+		this.seatNumber = seatNumber;
+		this.date = date;
+		this.whoName = whoName;
+	}
+	public MSeat() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+	public String getFloor() {
+		return floor;
+	}
+	public void setFloor(String floor) {
+		this.floor = floor;
+	}
+	public String getSeatNumber() {
+		return seatNumber;
+	}
+	public void setSeatNumber(String seatNumber) {
+		this.seatNumber = seatNumber;
+	}
+	public Date getDate() {
+		return date;
+	}
+	public void setDate(Date date) {
+		this.date = date;
+	}
+	public String getWhoName() {
+		return whoName;
+	}
+	public void setWhoName(String whoName) {
+		this.whoName = whoName;
+	}
+	
+
+}
+
+package com.Util;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
+public class JDBCUtil {
+	// 整理一下重复的代码
+	// 包装前4步
+	// 1加载驱动
+	// 2建立连接
+	// 3准备sql
+	// 4得到执行对象
+	public static String sql = "";
+	public static String url = "jdbc:mysql://localhost:3306/day0510?characterEncoding=utf-8&useSSL=false";
+	public static String user = "root";
+	public static String pwd = "root";
+	public static Connection con = null;
+	public static PreparedStatement ps = null;
+	public static ResultSet rs = null;
+
+	static {// 静态代码块
+		try {
+			Class.forName("com.mysql.jdbc.Driver");
+		} catch (ClassNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	// 静态方法更方便调用些
+	public static PreparedStatement getPs() {
+		try {
+			con = DriverManager.getConnection(url, user, pwd);
+			ps = con.prepareStatement(sql);
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return ps;
+	}
+
+	// 关闭资源
+	public static void close() {
+		if (rs != null) {
+			try {
+				rs.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (ps != null) {
+			try {
+				ps.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+
+		if (con != null) {
+			try {
+				con.close();
+			} catch (SQLException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
+}
+
